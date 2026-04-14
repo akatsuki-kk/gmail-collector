@@ -8,6 +8,7 @@ func TestConfigValidateAcceptsValidConfig(t *testing.T) {
 		Search: SearchConfig{
 			From:            []string{"example@example.com"},
 			SubjectContains: []string{"お客様のID"},
+			BodyContains:    []string{"本人確認コード"},
 		},
 		Extract: map[string]string{
 			"id": `IDは（(.+?)）`,
@@ -37,13 +38,14 @@ func TestSearchConfigBuildQuery(t *testing.T) {
 	search := SearchConfig{
 		From:            []string{"foo@example.com"},
 		SubjectContains: []string{"お客様 ID"},
+		BodyContains:    []string{"本人確認コード"},
 		After:           "2025/01/01",
 		Before:          "2025/12/31",
 		Label:           []string{"inbox"},
 	}
 
 	got := search.BuildQuery()
-	want := `from:foo@example.com subject:"お客様 ID" after:2025/01/01 before:2025/12/31 label:inbox`
+	want := `from:foo@example.com subject:"お客様 ID" 本人確認コード after:2025/01/01 before:2025/12/31 label:inbox`
 
 	if got != want {
 		t.Fatalf("BuildQuery() = %q, want %q", got, want)

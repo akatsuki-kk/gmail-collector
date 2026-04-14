@@ -18,6 +18,7 @@ type Config struct {
 type SearchConfig struct {
 	From             []string `yaml:"from"`
 	SubjectContains  []string `yaml:"subject_contains"`
+	BodyContains     []string `yaml:"body_contains"`
 	After            string   `yaml:"after"`
 	Before           string   `yaml:"before"`
 	Label            []string `yaml:"label"`
@@ -63,7 +64,7 @@ func (c Config) Validate() error {
 		}
 	}
 
-	if len(c.Search.From) == 0 && len(c.Search.SubjectContains) == 0 && c.Search.After == "" && c.Search.Before == "" && len(c.Search.Label) == 0 {
+	if len(c.Search.From) == 0 && len(c.Search.SubjectContains) == 0 && len(c.Search.BodyContains) == 0 && c.Search.After == "" && c.Search.Before == "" && len(c.Search.Label) == 0 {
 		return fmt.Errorf("search must include at least one condition")
 	}
 
@@ -81,6 +82,11 @@ func (s SearchConfig) BuildQuery() string {
 	for _, subject := range s.SubjectContains {
 		if trimmed := strings.TrimSpace(subject); trimmed != "" {
 			parts = append(parts, fmt.Sprintf("subject:%s", quoteIfNeeded(trimmed)))
+		}
+	}
+	for _, body := range s.BodyContains {
+		if trimmed := strings.TrimSpace(body); trimmed != "" {
+			parts = append(parts, quoteIfNeeded(trimmed))
 		}
 	}
 	if s.After != "" {

@@ -48,6 +48,19 @@ func TestExtractBodyConvertsHTMLToText(t *testing.T) {
 	}
 }
 
+// 本文に必要な文字列がすべて含まれる場合のみ一致とみなすことを確認する。
+func TestContainsAll(t *testing.T) {
+	body := "Your offer has been booked. Booking reference is GYG123."
+
+	if !containsAll(body, []string{"Your offer has been booked", "Booking reference"}) {
+		t.Fatal("containsAll() = false, want true")
+	}
+
+	if containsAll(body, []string{"Your offer has been booked", "A booking has been canceled"}) {
+		t.Fatal("containsAll() = true, want false")
+	}
+}
+
 func encode(value string) string {
 	return base64.URLEncoding.EncodeToString([]byte(value))
 }

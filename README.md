@@ -26,6 +26,11 @@ Gmail を検索し、メール本文から正規表現で値を抽出して JSON
 
 ```bash
 go mod tidy
+```
+
+## ビルド
+
+```bash
 go build -o gmail-collector .
 ```
 
@@ -39,6 +44,8 @@ search:
     - "sender@example.com"
   subject_contains:
     - "お客様のID"
+  body_contains:
+    - "本人確認コード"
   after: "2025/01/01"
   before: "2025/12/31"
   label:
@@ -57,10 +64,13 @@ output:
 
 - `from`: 送信者メールアドレスの配列
 - `subject_contains`: 件名に含まれる文字列の配列
+- `body_contains`: 本文に含まれている必要がある文字列の配列
 - `after`: 開始日。Gmail クエリへそのまま渡す
 - `before`: 終了日。Gmail クエリへそのまま渡す
 - `label`: Gmail ラベル名の配列
 - `include_spam_trash`: 迷惑メールとゴミ箱を検索対象に含めるか
+
+`body_contains` は Gmail の検索クエリにも反映しつつ、取得後の本文テキストに対して再確認します。
 
 `extract` は `キー: 正規表現` の形式です。正規表現にキャプチャグループがある場合は最初のグループを採用し、ない場合は一致全体を採用します。同じキーで複数一致した場合は最初の一致だけを返します。
 
@@ -78,7 +88,7 @@ HTML メールは本文をテキスト化してから抽出します。`text/pla
 ./gmail-collector run --config config.example.yaml --output result.json
 ```
 
-実行時はまず検索結果件数を表示し、その後に JSON を出力します。
+実行時はまず検索対象件数を表示し、その後に各メールの処理進捗と抽出結果件数を表示してから JSON を出力します。
 
 出力例:
 

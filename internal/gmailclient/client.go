@@ -25,6 +25,21 @@ type Result struct {
 	Extracted map[string]string `json:"extracted"`
 }
 
+type Progress struct {
+	Total     int
+	Processed int
+	Matched   int
+}
+
+type CollectOptions struct {
+	Query            string
+	IncludeSpamTrash bool
+	BodyContains     []string
+	ExtractRules     map[string]string
+	OnListed         func(total int)
+	OnProgress       func(Progress)
+}
+
 func NewService(ctx context.Context, credentials *auth.StoredCredentials, token *oauth2.Token) (*gmail.Service, error) {
 	client := credentials.OAuth2Config().Client(ctx, token)
 	service, err := gmail.NewService(ctx, option.WithHTTPClient(client))
@@ -34,14 +49,17 @@ func NewService(ctx context.Context, credentials *auth.StoredCredentials, token 
 	return service, nil
 }
 
-func Collect(ctx context.Context, service *gmail.Service, query string, includeSpamTrash bool, rules map[string]string) ([]Result, error) {
-	ids, err := listMessageIDs(ctx, service, query, includeSpamTrash)
+func Collect(ctx context.Context, service *gmail.Service, opts CollectOptions) ([]Result, error) {
+	ids, err := listMessageIDs(ctx, service, opts.Query, opts.IncludeSpamTrash)
 	if err != nil {
 		return nil, err
 	}
+	if opts.OnListed != nil {
+		opts.OnListed(len(ids))
+	}
 
 	results := make([]Result, 0, len(ids))
-	for _, id := range ids {
+	for index, id := range ids {
 		msg, err := service.Users.Messages.Get("me", id).Context(ctx).Format("full").Do()
 		if err != nil {
 			return nil, fmt.Errorf("fetch message %s: %w", id, err)
@@ -51,19 +69,30 @@ func Collect(ctx context.Context, service *gmail.Service, query string, includeS
 		if err != nil {
 			return nil, fmt.Errorf("extract body %s: %w", id, err)
 		}
-		extracted, err := extract.Apply(body, rules)
-		if err != nil {
-			return nil, err
+
+		if containsAll(body, opts.BodyContains) {
+			extracted, err := extract.Apply(body, opts.ExtractRules)
+			if err != nil {
+				return nil, err
+			}
+
+			results = append(results, Result{
+				MessageID: msg.Id,
+				ThreadID:  msg.ThreadId,
+				Subject:   headerValue(msg.Payload.Headers, "Subject"),
+				From:      headerValue(msg.Payload.Headers, "From"),
+				Date:      formatDate(headerValue(msg.Payload.Headers, "Date")),
+				Extracted: extracted,
+			})
 		}
 
-		results = append(results, Result{
-			MessageID: msg.Id,
-			ThreadID:  msg.ThreadId,
-			Subject:   headerValue(msg.Payload.Headers, "Subject"),
-			From:      headerValue(msg.Payload.Headers, "From"),
-			Date:      formatDate(headerValue(msg.Payload.Headers, "Date")),
-			Extracted: extracted,
-		})
+		if opts.OnProgress != nil {
+			opts.OnProgress(Progress{
+				Total:     len(ids),
+				Processed: index + 1,
+				Matched:   len(results),
+			})
+		}
 	}
 
 	return results, nil
@@ -200,4 +229,17 @@ func htmlToText(source string) (string, error) {
 
 func normalizeWhitespace(value string) string {
 	return strings.Join(strings.Fields(value), " ")
+}
+
+func containsAll(body string, required []string) bool {
+	for _, term := range required {
+		trimmed := strings.TrimSpace(term)
+		if trimmed == "" {
+			continue
+		}
+		if !strings.Contains(body, trimmed) {
+			return false
+		}
+	}
+	return true
 }

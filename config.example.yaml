@@ -3,6 +3,8 @@ search:
     - "sender@example.com"
   subject_contains:
     - "お客様のID"
+  body_contains:
+    - "本人確認コード"
   after: "2025/01/01"
   before: "2025/12/31"
   label:

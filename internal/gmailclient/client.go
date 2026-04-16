@@ -33,6 +33,7 @@ type Progress struct {
 
 type CollectOptions struct {
 	Query            string
+	MessageIDs       []string
 	IncludeSpamTrash bool
 	BodyContains     []string
 	ExtractRules     map[string]string
@@ -50,12 +51,16 @@ func NewService(ctx context.Context, credentials *auth.StoredCredentials, token 
 }
 
 func Collect(ctx context.Context, service *gmail.Service, opts CollectOptions) ([]Result, error) {
-	ids, err := listMessageIDs(ctx, service, opts.Query, opts.IncludeSpamTrash)
-	if err != nil {
-		return nil, err
-	}
-	if opts.OnListed != nil {
-		opts.OnListed(len(ids))
+	ids := opts.MessageIDs
+	if ids == nil {
+		var err error
+		ids, err = ListMessageIDs(ctx, service, opts.Query, opts.IncludeSpamTrash)
+		if err != nil {
+			return nil, err
+		}
+		if opts.OnListed != nil {
+			opts.OnListed(len(ids))
+		}
 	}
 
 	results := make([]Result, 0, len(ids))
@@ -98,7 +103,7 @@ func Collect(ctx context.Context, service *gmail.Service, opts CollectOptions) (
 	return results, nil
 }
 
-func listMessageIDs(ctx context.Context, service *gmail.Service, query string, includeSpamTrash bool) ([]string, error) {
+func ListMessageIDs(ctx context.Context, service *gmail.Service, query string, includeSpamTrash bool) ([]string, error) {
 	call := service.Users.Messages.List("me").Context(ctx).Q(query).IncludeSpamTrash(includeSpamTrash)
 	var ids []string
 

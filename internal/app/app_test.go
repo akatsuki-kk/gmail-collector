@@ -19,3 +19,22 @@ func TestFormatProgress(t *testing.T) {
 		t.Fatalf("formatProgress() = %q, want %q", got, want)
 	}
 }
+
+// 複数検索結果を message_id 単位で重複なく結合することを確認する。
+func TestMergeResults(t *testing.T) {
+	current := []gmailclient.Result{
+		{MessageID: "1", Subject: "Booking"},
+	}
+	incoming := []gmailclient.Result{
+		{MessageID: "1", Subject: "Booking"},
+		{MessageID: "2", Subject: "New booking received"},
+	}
+
+	got := mergeResults(current, incoming)
+	if len(got) != 2 {
+		t.Fatalf("mergeResults() len = %d, want %d", len(got), 2)
+	}
+	if got[1].MessageID != "2" {
+		t.Fatalf("mergeResults()[1].MessageID = %q, want %q", got[1].MessageID, "2")
+	}
+}

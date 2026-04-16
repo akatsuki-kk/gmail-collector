@@ -72,6 +72,26 @@ func (c Config) Validate() error {
 }
 
 func (s SearchConfig) BuildQuery() string {
+	if len(s.SubjectContains) == 0 {
+		return s.buildQueryWithSubject("")
+	}
+	return s.buildQueryWithSubject(s.SubjectContains[0])
+}
+
+func (s SearchConfig) BuildQueries() []string {
+	if len(s.SubjectContains) == 0 {
+		return []string{s.buildQueryWithSubject("")}
+	}
+
+	queries := make([]string, 0, len(s.SubjectContains))
+	for _, subject := range s.SubjectContains {
+		queries = append(queries, s.buildQueryWithSubject(subject))
+	}
+
+	return queries
+}
+
+func (s SearchConfig) buildQueryWithSubject(subjectFilter string) string {
 	var parts []string
 
 	for _, from := range s.From {
@@ -79,10 +99,8 @@ func (s SearchConfig) BuildQuery() string {
 			parts = append(parts, fmt.Sprintf("from:%s", quoteIfNeeded(trimmed)))
 		}
 	}
-	for _, subject := range s.SubjectContains {
-		if trimmed := strings.TrimSpace(subject); trimmed != "" {
-			parts = append(parts, fmt.Sprintf("subject:%s", quoteIfNeeded(trimmed)))
-		}
+	if trimmed := strings.TrimSpace(subjectFilter); trimmed != "" {
+		parts = append(parts, fmt.Sprintf("subject:%s", quoteIfNeeded(trimmed)))
 	}
 	for _, body := range s.BodyContains {
 		if trimmed := strings.TrimSpace(body); trimmed != "" {
